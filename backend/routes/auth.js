@@ -23,16 +23,30 @@ router.post('/register', registerValidation, async (req, res) => {
     const { name, email, password } = req.body;
 
     // Check if user already exists
-    let user = await User.findOne({ email });
+    let user = await User.findOne({ 
+      $or: [
+        { email },
+        { name }
+      ]
+    });
+    
     if (user) {
-      return res.status(400).json({ message: 'User already exists' });
+      if (user.email === email) {
+        return res.status(400).json({ message: 'Email already exists' });
+      }
+      return res.status(400).json({ message: 'Username already exists' });
     }
 
     // Create new user
     user = new User({
       name,
       email,
-      password
+      password,
+      balance: {
+        USD: 10000,
+        EUR: 0,
+        GBP: 0
+      }
     });
 
     await user.save();
@@ -49,7 +63,8 @@ router.post('/register', registerValidation, async (req, res) => {
       user: {
         id: user._id,
         name: user.name,
-        email: user.email
+        email: user.email,
+        balance: user.balance
       }
     });
   } catch (error) {
@@ -87,7 +102,8 @@ router.post('/login', async (req, res) => {
       user: {
         id: user._id,
         name: user.name,
-        email: user.email
+        email: user.email,
+        balance: user.balance
       }
     });
   } catch (error) {
@@ -96,10 +112,35 @@ router.post('/login', async (req, res) => {
   }
 });
 
+// Check email by username
+router.post('/check-email', async (req, res) => {
+  try {
+    const { username } = req.body;
+    
+    if (!username) {
+      return res.status(400).json({ message: 'Username is required' });
+    }
+    
+    const user = await User.findOne({ name: username });
+    
+    if (!user) {
+      return res.status(400).json({ message: 'User not found' });
+    }
+    
+    res.json({ email: user.email });
+  } catch (error) {
+    console.error('Email check error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // Get current user
 router.get('/me', auth, async (req, res) => {
   try {
-    const user = await User.findById(req.user._id).select('-password');
+    const user = await User.findById(req.user.userId).select('-password');
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
     res.json(user);
   } catch (error) {
     console.error('Get user error:', error);
@@ -108,14 +149,24 @@ router.get('/me', auth, async (req, res) => {
 });
 
 // Validate token
-router.get('/validate', auth, (req, res) => {
-  res.json({
-    user: {
-      id: req.user._id,
-      name: req.user.name,
-      email: req.user.email
+router.get('/validate', auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.userId).select('-password');
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
     }
-  });
+    res.json({
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        balance: user.balance
+      }
+    });
+  } catch (error) {
+    console.error('Validation error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
 });
 
 module.exports = router;
