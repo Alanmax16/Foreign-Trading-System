@@ -1,12 +1,6 @@
 {
-  "name": "foreign_trading_system",
-  "version": "1.0.0",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": ""
+  "dependencies": {
+    "date-fns": "^4.1.0",
+    "socket.io-client": "^4.8.1"
+  }
 }
